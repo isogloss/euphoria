@@ -100,19 +100,23 @@ public:
     }
     
     void draw(sf::RenderWindow& window, sf::Font& font, float time) {
-        // Draw glow effect when hovered
+        // Draw glow effect when hovered - with softer edges
         if (hoverAnimation > 0) {
-            sf::RectangleShape glow(size + sf::Vector2f(10, 10));
-            glow.setPosition(position - sf::Vector2f(5, 5));
-            sf::Color gc = glowColor;
-            gc.a = static_cast<sf::Uint8>(gc.a * hoverAnimation * glowIntensity);
-            glow.setFillColor(gc);
-            window.draw(glow);
+            // Draw multiple layers for soft glow
+            for (int i = 3; i > 0; i--) {
+                sf::RectangleShape glow(size + sf::Vector2f(i * 8.0f, i * 8.0f));
+                glow.setPosition(position - sf::Vector2f(i * 4.0f, i * 4.0f));
+                sf::Color gc = glowColor;
+                gc.a = static_cast<sf::Uint8>((gc.a * hoverAnimation * glowIntensity) / (i * 2));
+                glow.setFillColor(gc);
+                window.draw(glow);
+            }
         }
         
-        // Draw tab background with gradient effect
-        sf::RectangleShape tab(size);
-        tab.setPosition(position);
+        // Draw tab background with rounded appearance (simulate with multiple overlapping shapes)
+        // Draw main body
+        sf::RectangleShape tab(size - sf::Vector2f(0, 10));
+        tab.setPosition(position + sf::Vector2f(0, 5));
         
         // Animated color based on time and hover
         float wave = std::sin(time + position.y * 0.01f) * 0.15f + 0.85f;
@@ -127,11 +131,66 @@ public:
         color.b = static_cast<sf::Uint8>(color.b * wave);
         
         tab.setFillColor(color);
-        tab.setOutlineThickness(2);
-        tab.setOutlineColor(sf::Color(100, 150, 255, static_cast<sf::Uint8>(100 + hoverAnimation * 155)));
         window.draw(tab);
         
-        // Draw text
+        // Draw rounded corners (circles)
+        sf::CircleShape topCorner(5);
+        topCorner.setPosition(position);
+        topCorner.setFillColor(color);
+        window.draw(topCorner);
+        
+        sf::CircleShape topCornerRight(5);
+        topCornerRight.setPosition(position.x + size.x - 10, position.y);
+        topCornerRight.setFillColor(color);
+        window.draw(topCornerRight);
+        
+        sf::CircleShape bottomCorner(5);
+        bottomCorner.setPosition(position.x, position.y + size.y - 10);
+        bottomCorner.setFillColor(color);
+        window.draw(bottomCorner);
+        
+        sf::CircleShape bottomCornerRight(5);
+        bottomCornerRight.setPosition(position.x + size.x - 10, position.y + size.y - 10);
+        bottomCornerRight.setFillColor(color);
+        window.draw(bottomCornerRight);
+        
+        // Draw top and bottom rectangles to complete rounded look
+        sf::RectangleShape topRect(sf::Vector2f(size.x - 10, 5));
+        topRect.setPosition(position.x + 5, position.y);
+        topRect.setFillColor(color);
+        window.draw(topRect);
+        
+        sf::RectangleShape bottomRect(sf::Vector2f(size.x - 10, 5));
+        bottomRect.setPosition(position.x + 5, position.y + size.y - 5);
+        bottomRect.setFillColor(color);
+        window.draw(bottomRect);
+        
+        // Subtle border for sleek look
+        sf::RectangleShape border(size - sf::Vector2f(4, 4));
+        border.setPosition(position + sf::Vector2f(2, 2));
+        border.setFillColor(sf::Color::Transparent);
+        border.setOutlineThickness(1);
+        border.setOutlineColor(sf::Color(100, 150, 255, static_cast<sf::Uint8>(80 + hoverAnimation * 100)));
+        window.draw(border);
+        
+        // Draw text with subtle shadow for depth
+        // Shadow
+        sf::Text shadow;
+        shadow.setFont(font);
+        shadow.setString(label);
+        shadow.setCharacterSize(18);
+        shadow.setFillColor(sf::Color(0, 0, 0, 100));
+        sf::FloatRect shadowBounds = shadow.getLocalBounds();
+        shadow.setPosition(
+            position.x + (size.x - shadowBounds.width) / 2 - shadowBounds.left + 2,
+            position.y + (size.y - shadowBounds.height) / 2 - shadowBounds.top + 2
+        );
+        if (hoverAnimation > 0) {
+            shadow.move(hoverAnimation * 5, 0);
+        }
+        window.draw(shadow);
+        
+        // Main text
         sf::Text text;
         text.setFont(font);
         text.setString(label);
@@ -190,25 +249,63 @@ public:
     void draw(sf::RenderWindow& window, sf::Font& font) {
         if (activeTab == -1) return;
         
-        // Background panel
-        sf::RectangleShape panel(size);
-        panel.setPosition(position);
-        panel.setFillColor(sf::Color(20, 20, 40, 200));
-        panel.setOutlineThickness(2);
-        panel.setOutlineColor(sf::Color(100, 150, 255, 150));
-        window.draw(panel);
+        // Background panel with rounded corners simulation
+        // Main panel body
+        sf::RectangleShape panelBody(sf::Vector2f(size.x, size.y - 10));
+        panelBody.setPosition(position.x, position.y + 5);
+        panelBody.setFillColor(sf::Color(20, 20, 40, 200));
+        window.draw(panelBody);
         
-        // Title
+        // Rounded corners for panel
+        float cornerRadius = 8;
+        sf::CircleShape corners[4] = {
+            sf::CircleShape(cornerRadius), // top-left
+            sf::CircleShape(cornerRadius), // top-right
+            sf::CircleShape(cornerRadius), // bottom-left
+            sf::CircleShape(cornerRadius)  // bottom-right
+        };
+        
+        corners[0].setPosition(position.x, position.y);
+        corners[1].setPosition(position.x + size.x - cornerRadius * 2, position.y);
+        corners[2].setPosition(position.x, position.y + size.y - cornerRadius * 2);
+        corners[3].setPosition(position.x + size.x - cornerRadius * 2, position.y + size.y - cornerRadius * 2);
+        
+        for (auto& corner : corners) {
+            corner.setFillColor(sf::Color(20, 20, 40, 200));
+            window.draw(corner);
+        }
+        
+        // Top and bottom strips to complete rounded look
+        sf::RectangleShape topStrip(sf::Vector2f(size.x - cornerRadius * 2, cornerRadius));
+        topStrip.setPosition(position.x + cornerRadius, position.y);
+        topStrip.setFillColor(sf::Color(20, 20, 40, 200));
+        window.draw(topStrip);
+        
+        sf::RectangleShape bottomStrip(sf::Vector2f(size.x - cornerRadius * 2, cornerRadius));
+        bottomStrip.setPosition(position.x + cornerRadius, position.y + size.y - cornerRadius);
+        bottomStrip.setFillColor(sf::Color(20, 20, 40, 200));
+        window.draw(bottomStrip);
+        
+        // Sleek border
+        sf::RectangleShape border(sf::Vector2f(size.x - 4, size.y - 4));
+        border.setPosition(position.x + 2, position.y + 2);
+        border.setFillColor(sf::Color::Transparent);
+        border.setOutlineThickness(1);
+        border.setOutlineColor(sf::Color(100, 150, 255, 120));
+        window.draw(border);
+        
+        // Title with floating effect
         sf::Text title;
         title.setFont(font);
         title.setCharacterSize(24);
-        title.setFillColor(sf::Color(200, 220, 255));
+        
+        // Subtle floating animation for title
+        float titleFloat = std::sin(animationTime * 2.0f) * 3.0f;
         
         // Content
         sf::Text content;
         content.setFont(font);
         content.setCharacterSize(16);
-        content.setFillColor(sf::Color(180, 200, 240));
         
         // Different content for each tab
         std::string titleStr, contentStr;
@@ -255,11 +352,23 @@ public:
                 break;
         }
         
+        // Draw title shadow for depth
+        sf::Text titleShadow;
+        titleShadow.setFont(font);
+        titleShadow.setString(titleStr);
+        titleShadow.setCharacterSize(24);
+        titleShadow.setFillColor(sf::Color(0, 0, 0, 100));
+        titleShadow.setPosition(position.x + 22, position.y + 22 + titleFloat);
+        window.draw(titleShadow);
+        
+        // Draw title
         title.setString(titleStr);
-        title.setPosition(position.x + 20, position.y + 20);
+        title.setFillColor(sf::Color(220, 240, 255));
+        title.setPosition(position.x + 20, position.y + 20 + titleFloat);
         window.draw(title);
         
         content.setString(contentStr);
+        content.setFillColor(sf::Color(180, 200, 240));
         content.setPosition(position.x + 20, position.y + 60);
         
         // Fade in animation
@@ -270,14 +379,15 @@ public:
         
         window.draw(content);
         
-        // Animated decorative stars
+        // Animated decorative stars with floating effect
         for (int i = 0; i < 5; i++) {
             float angle = animationTime * 0.5f + i * 1.2566f; // 2*pi/5
             float radius = 30 + std::sin(animationTime * 2 + i) * 10;
+            float floatY = std::sin(animationTime * 1.5f + i * 0.5f) * 5.0f;
             sf::CircleShape star(3);
             star.setPosition(
                 position.x + size.x - 60 + std::cos(angle) * radius,
-                position.y + 60 + std::sin(angle) * radius
+                position.y + 60 + std::sin(angle) * radius + floatY
             );
             star.setFillColor(sf::Color(255, 255, 200, static_cast<sf::Uint8>(150 + std::sin(animationTime * 3 + i) * 105)));
             window.draw(star);
@@ -291,15 +401,19 @@ int main() {
                            sf::Style::Titlebar | sf::Style::Close);
     window.setFramerateLimit(60);
     
-    // Load font (using default SFML font fallback)
+    // Load font (using elegant/modern fonts)
     sf::Font font;
-    if (!font.loadFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")) {
-        // Try alternative paths
-        if (!font.loadFromFile("/usr/share/fonts/TTF/DejaVuSans.ttf")) {
-            if (!font.loadFromFile("/System/Library/Fonts/Helvetica.ttc")) {
-                // Font loading failed
-                std::cerr << "Error: Could not load any font file. Please ensure DejaVu or a similar font is installed." << std::endl;
-                return 1;
+    // Try modern, elegant fonts first - Lato is a beautiful modern font
+    if (!font.loadFromFile("/usr/share/fonts/truetype/lato/Lato-Light.ttf")) {
+        if (!font.loadFromFile("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf")) {
+            if (!font.loadFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")) {
+                if (!font.loadFromFile("/usr/share/fonts/TTF/DejaVuSans.ttf")) {
+                    if (!font.loadFromFile("/System/Library/Fonts/Helvetica.ttc")) {
+                        // Font loading failed
+                        std::cerr << "Error: Could not load any font file. Please ensure Lato, Liberation, or DejaVu fonts are installed." << std::endl;
+                        return 1;
+                    }
+                }
             }
         }
     }
@@ -435,13 +549,45 @@ int main() {
             tab.draw(window, font, time);
         }
         
-        // Draw title
+        // Draw title with floating animation and multiple effects
+        float floatOffset = std::sin(time * 1.5f) * 15.0f; // Smooth up/down floating
+        float floatOffsetX = std::cos(time * 0.8f) * 8.0f; // Subtle horizontal sway
+        float scale = 1.0f + std::sin(time * 2.0f) * 0.05f; // Gentle pulsing
+        
+        // Draw multiple shadow layers for depth and glow
+        for (int i = 4; i > 0; i--) {
+            sf::Text titleShadow;
+            titleShadow.setFont(font);
+            titleShadow.setString("✨ EUPHORIC SPACY MAGICAL MENU ✨");
+            titleShadow.setCharacterSize(32);
+            sf::Color shadowColor(100, 150, 255, static_cast<sf::Uint8>(30 / i));
+            titleShadow.setFillColor(shadowColor);
+            titleShadow.setPosition(250 + floatOffsetX + i * 2, 20 + floatOffset + i * 2);
+            titleShadow.setScale(scale, scale);
+            window.draw(titleShadow);
+        }
+        
+        // Main title with gradient-like effect using multiple text layers
         sf::Text title;
         title.setFont(font);
         title.setString("✨ EUPHORIC SPACY MAGICAL MENU ✨");
         title.setCharacterSize(32);
-        title.setFillColor(sf::Color(200, 220, 255, static_cast<sf::Uint8>(200 + std::sin(time * 2) * 55)));
-        title.setPosition(250, 20);
+        
+        // Animated color with smooth transitions
+        float colorWave = std::sin(time * 2) * 0.5f + 0.5f;
+        sf::Uint8 r = static_cast<sf::Uint8>(200 + colorWave * 55);
+        sf::Uint8 g = static_cast<sf::Uint8>(220 + std::sin(time * 2.3f) * 35);
+        sf::Uint8 b = 255;
+        sf::Uint8 a = static_cast<sf::Uint8>(240 + std::sin(time * 3.0f) * 15);
+        
+        title.setFillColor(sf::Color(r, g, b, a));
+        title.setPosition(250 + floatOffsetX, 20 + floatOffset);
+        title.setScale(scale, scale);
+        
+        // Add subtle outline for crispness
+        title.setOutlineThickness(1);
+        title.setOutlineColor(sf::Color(150, 180, 255, static_cast<sf::Uint8>(a * 0.7f)));
+        
         window.draw(title);
         
         window.display();
