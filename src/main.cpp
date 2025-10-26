@@ -4,6 +4,7 @@
 #include <cmath>
 #include <random>
 #include <memory>
+#include <iostream>
 
 // Particle system for magical effects
 struct Particle {
@@ -82,7 +83,7 @@ public:
           isActive(false), hoverAnimation(0), glowIntensity(0),
           baseColor(color), glowColor(sf::Color(150, 200, 255, 100)) {}
     
-    void update(float dt, sf::Vector2f mousePos) {
+    void update(float dt, sf::Vector2f mousePos, float time) {
         // Check hover
         bool wasHovered = isHovered;
         isHovered = mousePos.x >= position.x && mousePos.x <= position.x + size.x &&
@@ -91,7 +92,7 @@ public:
         // Animate hover effect
         if (isHovered) {
             hoverAnimation = std::min(1.0f, hoverAnimation + dt * 3.0f);
-            glowIntensity = std::sin(dt * 3.0f) * 0.3f + 0.7f;
+            glowIntensity = std::sin(time * 3.0f) * 0.3f + 0.7f;
         } else {
             hoverAnimation = std::max(0.0f, hoverAnimation - dt * 3.0f);
             glowIntensity = 0;
@@ -296,7 +297,8 @@ int main() {
         // Try alternative paths
         if (!font.loadFromFile("/usr/share/fonts/TTF/DejaVuSans.ttf")) {
             if (!font.loadFromFile("/System/Library/Fonts/Helvetica.ttc")) {
-                // Use system default if available
+                // Font loading failed
+                std::cerr << "Error: Could not load any font file. Please ensure DejaVu or a similar font is installed." << std::endl;
                 return 1;
             }
         }
@@ -346,11 +348,12 @@ int main() {
     std::uniform_real_distribution<float> xDist(0, 1200);
     std::uniform_real_distribution<float> yDist(0, 800);
     std::uniform_real_distribution<float> sizeDist(0.5f, 2.5f);
+    std::uniform_int_distribution<int> alphaDist(100, 255);
     
     for (int i = 0; i < 200; i++) {
         sf::CircleShape star(sizeDist(rng));
         star.setPosition(xDist(rng), yDist(rng));
-        star.setFillColor(sf::Color(255, 255, 255, static_cast<sf::Uint8>(100 + rand() % 156)));
+        star.setFillColor(sf::Color(255, 255, 255, static_cast<sf::Uint8>(alphaDist(rng))));
         stars.push_back(star);
     }
     
@@ -393,16 +396,16 @@ int main() {
         
         // Update
         for (auto& tab : tabs) {
-            tab.update(dt, mousePos);
+            tab.update(dt, mousePos, time);
         }
         featureDisplay.update(dt);
         particles.update(dt);
         
         // Emit random particles occasionally
         if (particleClock.getElapsedTime().asSeconds() > 0.1f) {
-            for (auto& tab : tabs) {
-                if (tab.getActive()) {
-                    sf::Vector2f tabPos(30 + tabWidth / 2, 100 + (&tab - &tabs[0]) * (tabHeight + spacing) + tabHeight / 2);
+            for (size_t i = 0; i < tabs.size(); i++) {
+                if (tabs[i].getActive()) {
+                    sf::Vector2f tabPos(30 + tabWidth / 2, 100 + i * (tabHeight + spacing) + tabHeight / 2);
                     particles.emit(tabPos, sf::Color(200, 220, 255, 150));
                 }
             }
